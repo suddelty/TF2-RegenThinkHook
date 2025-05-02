@@ -6,12 +6,12 @@
 		{
 			"CTFPlayer::m_flLastHealthRegenAt"
 			{
-				"linux" "8632"
+				"linux" "8636"
 				"windows" "8628"
 			}
 			"CTFPlayer::m_flAccumulatedHealthRegen"
 			{
-				"linux" "8624"
+				"linux" "8628"
 				"windows" "8620"
 			}
 			"CTFPlayer::TakeHealth()"
@@ -21,12 +21,12 @@
 			}
 			"CTFPlayer::m_flNextAmmoRegenAt"
 			{
-				"linux" "8628"
+				"linux" "8632"
 				"windows" "8624"
 			}
 			"CTFPlayer::m_flLastDamageTime"
 			{
-				"linux" "8968"
+				"linux" "8972"
 				"windows" "8964"
 			}
 		}
@@ -53,10 +53,10 @@
 			// Taken from TF2 Custom Attribute Starter Pack, Thank you nosoop
 			"CTFPlayer::RegenThink()"
 			{
-				// contsins string "RegenThink" in block after first jump
+				// contains string "RegenThink" in block after first jump
 				"library"		"server"
 				"linux"			"@_ZN9CTFPlayer10RegenThinkEv"
-				"windows"		"\x55\x8B\xEC\x83\xEC\x7C\x56\x8B\xF1"
+				"windows"		"\x55\x8B\xEC\x83\xEC\x7C\x56\x8B\xF1\x8B\x06"
 			}
 			
 			"CBaseEntity::RegenAmmoInternal()"
