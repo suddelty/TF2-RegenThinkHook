@@ -10,6 +10,8 @@ Plugins can use this as well to override the regeneration per class or player.
 
 `sm_classregen_reloadconfig` - requires ADMFLAG_CONFIG, reload the config at `cfg/sourcemod/classregenconfig.cfg`
 
+`sm_classregen_debug` - Enable debug output (0=off, 1=on). Shows detailed regeneration timing and decision logging.
+
 `sm_tf2classregenconfig_version` - version ConVar
 
 ## Config
