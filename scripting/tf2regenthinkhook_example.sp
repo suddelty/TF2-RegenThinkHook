@@ -7,14 +7,14 @@
 #pragma newdecls required
 #pragma semicolon 1
 
-#define PLUGIN_VERSION "22w44a"
+#define PLUGIN_VERSION "1.0.0"
 
 public Plugin myinfo = {
 	name = "[TF2] Regen Think Hooks - Example Plugin",
-	author = "reBane",
+	author = "reBane, suddelty",
 	description = "Cycle no regen, all class regen and give permanent ammo/metal regen",
 	version = PLUGIN_VERSION,
-	url = "https://github.com/DosMike/TF2-RegenThinkHook"
+	url = "https://github.com/suddelty/TF2-RegenThinkHook"
 }
 
 bool mode2;

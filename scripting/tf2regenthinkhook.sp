@@ -14,14 +14,14 @@
 #define TF_REGEN_HEALTH 3.0
 #define TF_REGEN_AMMO_INTERVAL 5.0
 
-#define PLUGIN_VERSION "23w04a"
+#define PLUGIN_VERSION "1.0.0"
 
 public Plugin myinfo = {
 	name = "[TF2] Regen Think Hooks",
-	author = "reBane",
+	author = "reBane, suddelty",
 	description = "Library to control health ammo and metal regen",
 	version = PLUGIN_VERSION,
-	url = "https://github.com/DosMike/TF2-RegenThinkHook"
+	url = "https://github.com/suddelty/TF2-RegenThinkHook"
 }
 
 Handle sc_CTFPlayer_TakeHealth;

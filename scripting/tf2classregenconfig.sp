@@ -6,14 +6,14 @@
 #pragma newdecls required
 #pragma semicolon 1
 
-#define PLUGIN_VERSION "23w23a"
+#define PLUGIN_VERSION "1.0.0"
 
 public Plugin myinfo = {
 	name = "[TF2] Class Regeneration Configuration",
-	author = "reBane",
-	description = "Control health, ammo and metal regenration for everyone",
+	author = "reBane, suddelty",
+	description = "Control health, ammo and metal regeneration for everyone",
 	version = PLUGIN_VERSION,
-	url = "https://github.com/DosMike/TF2-RegenThinkHook"
+	url = "https://github.com/suddelty/TF2-RegenThinkHook"
 }
 
 enum struct RegenParams {
@@ -45,6 +45,9 @@ int g_lastDamageOffset;
 GlobalForward fwd_ConfigReloaded;
 
 ConVar cvarConfigPath;
+ConVar cvarDebugMode;
+
+float g_clientLastDamageTime[33];
 
 public void OnPluginStart() {
 	GameData data = new GameData("tf2rth.games");
@@ -56,7 +59,14 @@ public void OnPluginStart() {
 	
 	RegAdminCmd("sm_classregen_reloadconfig", ConCmd_ReloadConfig, ADMFLAG_CONFIG, "Reload the config from disk");
 	
+	// Hook player spawn to initialize damage timer properly
+	HookEvent("player_spawn", Event_PlayerSpawn);
+	
+	// Hook damage events to properly track when players take damage
+	HookEvent("player_hurt", Event_PlayerHurt);
+	
 	cvarConfigPath = CreateConVar("sm_tf2classregenconfig", "cfg/sourcemod/classregenconfig.cfg", "Config Path");
+	cvarDebugMode = CreateConVar("sm_classregen_debug", "0", "Enable debug output (0=off, 1=on)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	ConVar version = CreateConVar("sm_tf2classregenconfig_version", PLUGIN_VERSION, "Version", FCVAR_NOTIFY|FCVAR_DONTRECORD);
 	version.SetString(PLUGIN_VERSION);
 	version.AddChangeHook(OnVersionChanged);
@@ -157,6 +167,31 @@ public void LoadConfig(int replyTo) {
 
 public void OnClientDisconnect_Post(int client) {
 	PlayerOverrides[client].active=false;
+	g_clientLastDamageTime[client] = 0.0;
+}
+
+public void Event_PlayerSpawn(Event event, const char[] name, bool dontBroadcast) {
+	int client = GetClientOfUserId(event.GetInt("userid"));
+	if (client > 0 && IsClientInGame(client)) {
+		// Initialize our own damage timer to current time to prevent instant boost on fresh spawn
+		g_clientLastDamageTime[client] = GetGameTime();
+		// Also initialize the game's damage timer
+		SetEntDataFloat(client, g_lastDamageOffset, GetGameTime());
+		if (cvarDebugMode.BoolValue) {
+			PrintToServer("[DEBUG] Client %d spawned - damage timer initialized to %.2f", client, GetGameTime());
+		}
+	}
+}
+
+public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast) {
+	int client = GetClientOfUserId(event.GetInt("userid"));
+	if (client > 0 && IsClientInGame(client)) {
+		// Reset our damage timer when player takes damage
+		g_clientLastDamageTime[client] = GetGameTime();
+		if (cvarDebugMode.BoolValue) {
+			PrintToServer("[DEBUG] Client %d took damage - damage timer reset to %.2f", client, GetGameTime());
+		}
+	}
 }
 
 stock bool GetRegenParams(int client, RegenParams params) {
@@ -184,12 +219,46 @@ public Action TF2_OnClientRegenThinkPre(int client) {
 public Action TF2_OnClientRegenThinkHealth(int client, float& regenClass, float& regenAttribs) {
 	if (!g_clientParams.active) return Plugin_Continue;
 	
+	// Optimization: Skip all calculations if player is already at full health
+	int currentHealth = GetClientHealth(client);
+	int maxHealth = GetEntProp(client, Prop_Data, "m_iMaxHealth");
+	if (currentHealth >= maxHealth) {
+		regenClass = 0.0;
+		return Plugin_Changed;
+	}
+	
+	float currentTime = GetGameTime();
+	
+	// Use only our own reliable damage timer
+	float timeSinceDamage = currentTime - g_clientLastDamageTime[client];
+	
+	// Debug output
+	if (cvarDebugMode.BoolValue) {
+		PrintToServer("[DEBUG] Client %d: CurrentTime=%.2f, LastDamage=%.2f, TimeSince=%.2f, StartAfter=%.2f", 
+			client, currentTime, g_clientLastDamageTime[client], timeSinceDamage, g_clientParams.noDamageStart);
+	}
+	
+	// If not enough time has passed since damage, disable ALL regeneration
+	if (timeSinceDamage < g_clientParams.noDamageStart) {
+		if (cvarDebugMode.BoolValue) {
+			PrintToServer("[DEBUG] Client %d: Blocking regen - not enough time since damage", client);
+		}
+		regenClass = 0.0;
+		if (g_clientParams.neverHurt && (regenClass + regenAttribs) < 0.0) {
+			regenClass = regenAttribs = 0.0;
+		}
+		return Plugin_Changed;
+	}
+	
+	if (cvarDebugMode.BoolValue) {
+		PrintToServer("[DEBUG] Client %d: Allowing regen - enough time has passed", client);
+	}
+	
 	float regen = g_clientParams.baseRegen;
 	
 	float boost = g_clientParams.healingAdd;
 	if (GetMedicPatient(client)>0) regen += boost;
 	
-	float timeSinceDamage = GetGameTime() - GetEntDataFloat(client, g_lastDamageOffset);
 	if (timeSinceDamage >= g_clientParams.noDamageEnd) {
 		if (g_clientParams.noDamageAdd)
 			regen += g_clientParams.noDamageScale;
@@ -212,6 +281,10 @@ public Action TF2_OnClientRegenThinkHealth(int client, float& regenClass, float&
 			regen *= boost+1.0; //re-add initial scale offset
 	}
 	regenClass = regen;
+	
+	if (cvarDebugMode.BoolValue) {
+		PrintToServer("[DEBUG] Client %d: Final regen=%.2f", client, regenClass);
+	}
 	
 	if (g_clientParams.neverHurt && (regenClass + regenAttribs) < 0.0) {
 		regenClass = regenAttribs = 0.0;
